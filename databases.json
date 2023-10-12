@@ -1,0 +1,26 @@
+{
+    "db1": 
+    {
+        "user"    : "postgres",
+        "password": "kodejifr",
+        "host"    : "localhost",
+        "port"    : 5432,
+        "dbname"  : "postgres"
+    },
+    "db2": 
+    {
+        "user"    : "postgres",
+        "password": "kodejifr",
+        "host"    : "localhost",
+        "port"    : 5432,
+        "dbname"  : "postgres"
+    },
+    "db3": 
+    {
+        "user"    : "postgres",
+        "password": "kodejifr",
+        "host"    : "localhost",
+        "port"    : 5432,
+        "dbname"  : "postgres"
+    }
+}
