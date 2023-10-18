@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"log"
 	"os"
 	"time"
 
@@ -13,15 +14,10 @@ import (
 	_ "github.com/lib/pq"
 )
 
-func hello(nome string) {
-	message := fmt.Sprintf("opa, %v", nome)
-	fmt.Println(message)
-}
-
 func runCronJobs() {
 	s := gocron.NewScheduler(time.UTC)
 
-	s.Every(2).Seconds().Do(func() {
+	s.Every(15).Minutes().Do(func() {
 
 		arquivo, err := os.ReadFile("databases.json")
 		if err != nil {
@@ -36,28 +32,71 @@ func runCronJobs() {
 			return
 		}
 
-		// Loop sobre as configurações de banco de dados no mapa
+		// Loop sobre as configurações das bases de dados
 		for nome, config := range configs {
-			// Criar string de conexão com o banco de dados
-			connectionString := fmt.Sprintf("user=%s password=%s host=%s port=%d dbname=%s sslmode=disable",
+			// Conexão banco de recurso
+			clientConnection := fmt.Sprintf("user=%s password=%s host=%s port=%d dbname=%s sslmode=disable",
 				config.User, config.Password, config.Host, config.Port, config.DBName)
 
-			// Abrir a conexão com o banco de dados
-			db, err := sql.Open("postgres", connectionString)
+			db, err := sql.Open("postgres", clientConnection)
 			if err != nil {
 				fmt.Printf("Erro ao abrir a conexão com %s: %v\n", nome, err)
 				continue
 			}
 
-			// Tentar fazer uma consulta no banco de dados
+			// Ping pra testar a conexão
 			err = db.Ping()
 			if err != nil {
 				fmt.Printf("Erro ao conectar ao %s: %v\n", nome, err)
-			} else {
-				fmt.Printf("Conexão bem-sucedida ao %s\n", nome)
 			}
 
-			// Não se esqueça de fechar a conexão após usar
+			rows, err := db.Query("SELECT")
+			if err != nil {
+				log.Fatal(err)
+			}
+			defer rows.Close()
+
+			//Conexão com o banco de destino dos dados
+			connection2 := fmt.Sprintf("user=%s password=%s host=%s port=%d dbname=%s sslmode=disable",
+				"postgres", "teste", "localhost", 5432, "postgres")
+
+			// Abrir a conexão com o banco de dados que vai ser importado os dados
+			db2, err := sql.Open("postgres", connection2)
+			if err != nil {
+				fmt.Printf("Erro ao abrir a conexão no banco de destino dos dados com %s: %v\n", nome, err)
+				continue
+			}
+
+			// Testa conexão banco de destino
+			err = db2.Ping()
+			if err != nil {
+				fmt.Printf("Erro ao conectar ao banco de destino %s: %v\n", nome, err)
+			}
+
+			for rows.Next() {
+				var columns string
+
+				stmt, err := db2.Prepare("INSERT ")
+				if err != nil {
+					log.Fatal(err)
+				}
+				defer stmt.Close()
+
+				_, err = stmt.Exec(columns)
+				if err != nil {
+					log.Fatal(err)
+				}
+
+				fmt.Println("Item importados com sucesso.")
+			}
+
+			// Verifica se houve algum erro durante o processo de percorrer as linhas
+			if err = rows.Err(); err != nil {
+				log.Fatal(err)
+			}
+
+			fmt.Printf("Banco %s finalizado:", config.DBName)
+
 			defer db.Close()
 		}
 
